@@ -1,6 +1,7 @@
 name: Bug Report
 description: Something doesn't work correctly in ImHex.
 title: "[Bug] "
+labels: bug
 body:
 - type: dropdown
   id: os
@@ -34,11 +35,23 @@ body:
     placeholder: X.X.X
   validations:
     required: true
+- type: checkboxes
+  attributes:
+    label: ImHex Build Type
+    options:
+    - label: Nightly or built from sources
+- type: input
+  attributes:
+    label: Installation type
+    description: |
+      How did you install ImHex ? MSI/Portable/DMG/AppImage/Fedora package/etc..
+  validations:
+    required: true
 - type: textarea
   attributes:
     label: Additional context?
-    value: |
+    placeholder: |
       - Additional information about your environment.
-      - If possible and useful, please upload the binary you've been editing when the bug occured.
+      - If possible and useful, please upload the binary you've been editing when the bug occurred.
   validations:
     required: false

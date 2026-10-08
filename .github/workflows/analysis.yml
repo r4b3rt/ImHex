@@ -1,17 +1,14 @@
-name: "CodeQL and Unit Tests"
+name: "CodeQL"
 
 on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
   schedule:
-    - cron: '21 0 * * 2'
+    - cron: '0 0 * * *'
+  workflow_dispatch:
 
 jobs:
-  analyze:
-    name: 🐛 Analyze
-    runs-on: ubuntu-latest
+  codeql:
+    name: 🐛 CodeQL
+    runs-on: ubuntu-26.04
     permissions:
       actions: read
       contents: read
@@ -19,23 +16,28 @@ jobs:
 
     steps:
     - name: 🧰 Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v7
       with:
-        fetch-depth: 0
         submodules: recursive
 
     - name: ✋ Initialize CodeQL
-      uses: github/codeql-action/init@v1
+      uses: github/codeql-action/init@v4
       with:
         languages: 'cpp'
 
-    - name: 📜 Restore cache
-      uses: actions/cache@v2
+    - name: 📜 Setup ccache
+      uses: hendrikmuhs/ccache-action@v1.2.23
+      with:
+        key: ${{ runner.os }}-analysis-build-${{ github.run_id }}
+        restore-keys: ${{ runner.os }}-analysis-build
+        max-size: 50M
+
+    - name: 📜 Restore CMakeCache
+      uses: actions/cache@v6
       with:
         path: |
-          ~/.ccache
-          .flatpak-builder
-        key: ${{ runner.os }}-build
+          build/CMakeCache.txt
+        key: ${{ runner.os }}-analysis-build-${{ hashFiles('**/CMakeLists.txt') }}
 
     - name: ⬇️ Install dependencies
       run: |
@@ -44,19 +46,21 @@ jobs:
 
     - name: 🛠️ Build
       run: |
-        mkdir build
+        set -x
+        mkdir -p build
         cd build
-        CC=gcc-10 CXX=g++-10 cmake \
-          -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
-          -DCMAKE_INSTALL_PREFIX="$PWD/install" \
-          -D CMAKE_C_COMPILER_LAUNCHER=ccache -D CMAKE_CXX_COMPILER_LAUNCHER=ccache \
+        CC=gcc-16 CXX=g++-16 cmake                \
+          -DCMAKE_BUILD_TYPE=$BUILD_TYPE          \
+          -DCMAKE_INSTALL_PREFIX="$PWD/install"   \
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache      \
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache    \
+          -DCMAKE_C_FLAGS="-fuse-ld=lld"          \
+          -DCMAKE_CXX_FLAGS="-fuse-ld=lld"        \
+          -DIMHEX_PATTERNS_PULL_MASTER=ON         \
+          -DIMHEX_EXCLUDE_PLUGINS="script_loader" \
+          -G Ninja                                \
           ..
-        make -j 4 install
-
-    - name: 🧪 Perform Unit Tests
-      run: |
-        cd build
-        ctest
+        ninja install
 
     - name: 🗯️ Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v1
+      uses: github/codeql-action/analyze@v4

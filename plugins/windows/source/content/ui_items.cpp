@@ -1,48 +1,43 @@
-#include <hex/api/content_registry.hpp>
+#include <hex/api/content_registry/settings.hpp>
+#include <hex/api/content_registry/user_interface.hpp>
 
 #include <hex/helpers/utils.hpp>
-#include <hex/helpers/fmt.hpp>
 
 #include <windows.h>
 #include <psapi.h>
 
 #include <imgui.h>
-#include <imgui_imhex_extensions.h>
-#include <fontawesome_font.h>
+#include <fonts/vscode_icons.hpp>
+#include <hex/ui/imgui_imhex_extensions.h>
+
 
 namespace hex::plugin::windows {
 
-    static ULONGLONG subtractTimes(const FILETIME &left, const FILETIME &right) {
-        LARGE_INTEGER a, b;
-
-        a.LowPart = left.dwLowDateTime;
-        a.HighPart = left.dwHighDateTime;
-
-        b.LowPart = right.dwLowDateTime;
-        b.HighPart = right.dwHighDateTime;
-
-        return a.QuadPart - b.QuadPart;
-    }
-
     void addFooterItems() {
 
-        ContentRegistry::Interface::addFooterItem([] {
+        static ContentRegistry::Settings::SettingsVariable<bool, "hex.builtin.setting.interface", "hex.builtin.setting.interface.show_resource_usage"> showResourceUsage = false;
+        ContentRegistry::UserInterface::addFooterItem([] {
+            if (!showResourceUsage)
+                return;
+
             static float cpuUsage = 0.0F;
 
-            if (ImGui::HasSecondPassed()) {
+            if (ImGuiExt::HasSecondPassed()) {
                 static ULARGE_INTEGER lastCPU, lastSysCPU, lastUserCPU;
                 static u32 numProcessors;
                 static HANDLE self = GetCurrentProcess();
 
-                FILETIME ftime, fsys, fuser;
                 ULARGE_INTEGER now, sys, user;
+                {
+                    FILETIME ftime, fsys, fuser;
 
-                GetSystemTimeAsFileTime(&ftime);
-                memcpy(&now, &ftime, sizeof(FILETIME));
+                    GetSystemTimeAsFileTime(&ftime);
+                    memcpy(&now, &ftime, sizeof(FILETIME));
 
-                GetProcessTimes(self, &ftime, &ftime, &fsys, &fuser);
-                memcpy(&sys, &fsys, sizeof(FILETIME));
-                memcpy(&user, &fuser, sizeof(FILETIME));
+                    GetProcessTimes(self, &ftime, &ftime, &fsys, &fuser);
+                    memcpy(&sys, &fsys, sizeof(FILETIME));
+                    memcpy(&user, &fuser, sizeof(FILETIME));
+                }
 
                 if (lastCPU.QuadPart == 0) {
                     SYSTEM_INFO sysInfo;
@@ -63,33 +58,35 @@ namespace hex::plugin::windows {
                                (user.QuadPart - lastUserCPU.QuadPart);
                     cpuUsage /= (now.QuadPart - lastCPU.QuadPart);
                     cpuUsage /= numProcessors;
-                    lastCPU = now;
+                    lastCPU     = now;
                     lastUserCPU = user;
-                    lastSysCPU = sys;
+                    lastSysCPU  = sys;
                 }
 
                 cpuUsage *= 100;
             }
 
-            ImGui::TextUnformatted(hex::format(ICON_FA_TACHOMETER_ALT " {0:2}.{1:02}", u32(cpuUsage), u32(cpuUsage * 100) % 100).c_str());
+            ImGuiExt::TextFormatted(ICON_VS_DASHBOARD " {0:2}.{1:02}%", u32(cpuUsage), u32(cpuUsage * 100) % 100);
         });
 
-        ContentRegistry::Interface::addFooterItem([] {
+        ContentRegistry::UserInterface::addFooterItem([] {
+            if (!showResourceUsage)
+                return;
+
             static MEMORYSTATUSEX memInfo;
             static PROCESS_MEMORY_COUNTERS_EX pmc;
 
-            if (ImGui::HasSecondPassed()) {
+            if (ImGuiExt::HasSecondPassed()) {
                 memInfo.dwLength = sizeof(MEMORYSTATUSEX);
                 GlobalMemoryStatusEx(&memInfo);
-                GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&pmc), sizeof(pmc));
+                GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS *>(&pmc), sizeof(pmc));
             }
 
             auto totalMem = memInfo.ullTotalPhys;
-            auto usedMem = pmc.PrivateUsage;
+            auto usedMem  = pmc.WorkingSetSize;
 
-            ImGui::TextUnformatted(hex::format(ICON_FA_MICROCHIP " {0} / {1}", hex::toByteString(usedMem), hex::toByteString(totalMem)).c_str());
+            ImGuiExt::TextFormatted(ICON_VS_CHIP " {0} / {1}", hex::toByteString(usedMem), hex::toByteString(totalMem));
         });
-
     }
 
 }

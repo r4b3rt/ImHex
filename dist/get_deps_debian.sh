@@ -1,9 +1,5 @@
 #!/usr/bin/env sh
 
-echo "As of 2020-12, Debian stable does not include g++-10, needs debian testing or unstable."
-
-# Tested on 2020-12-09 with Docker image bitnami/minideb:unstable
-
 # Install pkgconf (adds minimum dependencies) only if the equivalent pkf-config is not already installed.
 if ! which pkg-config
 then
@@ -12,20 +8,38 @@ fi
 
 apt install -y \
   build-essential       \
-  gcc-10                \
-  g++-10                \
+  gcc-16                \
+  g++-16                \
+  lld                   \
   ${PKGCONF:-}          \
   cmake                 \
-  make                  \
   ccache                \
-  libglfw3-dev          \
+  libgl-dev             \
+  libglu1-mesa-dev      \
+  libwayland-dev        \
+  libwayland-bin        \
+  libxkbcommon-dev      \
+  libx11-dev            \
+  libxrandr-dev         \
+  libxinerama-dev       \
+  libxcursor-dev        \
+  libxi-dev             \
+  libxext-dev           \
   libglm-dev            \
   libmagic-dev          \
   libmbedtls-dev        \
-  libcapstone-dev       \
-  python3-dev           \
+  libfontconfig-dev     \
   libfreetype-dev       \
+  libdbus-1-dev         \
+  libcurl4-gnutls-dev   \
   libgtk-3-dev          \
-
-echo "Please consider this before running cmake (useful on e.g. Ubuntu 20.04):"
-echo "export CXX=g++-10"
+  ninja-build           \
+  zlib1g-dev            \
+  libbz2-dev            \
+  liblzma-dev           \
+  libzstd-dev           \
+  liblz4-dev            \
+  libssh2-1-dev         \
+  libmd4c-dev           \
+  libmd4c-html0-dev     \
+  libelf-dev
